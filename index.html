@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>十二年國教雙版本英語時事閱讀與素養測驗學習平台</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 圖示庫 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-btn.active {
+            border-bottom: 3px solid #2563eb;
+            color: #2563eb;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- 頁頭與控制列 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2 rounded-xl">
+                    <i class="fa-solid fa-graduation-cap text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">雙版本英文素養閱讀網</h1>
+                    <p class="text-xs text-slate-500">十二年國教會考 & 學測時事閱讀學習系統</p>
+                </div>
+            </div>
+
+            <!-- 版本切換 toggle -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button id="btn-version-cap" onclick="switchVersion('cap')" class="px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 bg-white text-blue-600 shadow-sm">
+                    國中會考版 (CAP)
+                </button>
+                <button id="btn-version-gsat" onclick="switchVersion('gsat')" class="px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900">
+                    高中學測版 (GSAT)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區域 -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+
+        <!-- AI 時事主題輸入控制台 -->
+        <div class="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm">
+            <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between mb-3">
+                <div class="flex-1 relative">
+                    <i class="fa-solid fa-[#2563eb] fa-newspaper absolute left-3.5 top-3.5 text-slate-400"></i>
+                    <input type="text" id="topic-input" placeholder="輸入國內外時事主題（如：台灣綠能地熱、AI法案、氣候變遷...）" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1 sm:w-48">
+                        <input type="password" id="api-key-input" placeholder="Gemini API Key (可選)" class="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="toggleApiKeyVisibility()" class="absolute right-2.5 top-3 text-slate-400 hover:text-slate-600">
+                            <i id="api-key-icon" class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                    </div>
+                    <button onclick="generateContent()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl transition-all shadow-md hover:shadow-blue-200 flex items-center shrink-0">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> 生成時事教材
+                    </button>
+                </div>
+            </div>
+
+            <!-- 快捷主題按鈕 -->
+            <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-xs">
+                <span class="text-slate-400 font-medium">快捷主題示範：</span>
+                <button onclick="setTopic('台灣地熱能源發展與綠能轉型')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg">🌱 台灣地熱發電</button>
+                <button onclick="setTopic('免運費活動背後的消費心理學')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg">🛒 免運隱藏成本</button>
+                <button onclick="setTopic('城市路樹根部空間與都市生態')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg">🌳 城市綠化空間</button>
+            </div>
+        </div>
+
+        <!-- 載入中 Loading 指示器 -->
+        <div id="loading-spinner" class="hidden bg-white rounded-2xl p-12 mb-6 border border-slate-200 shadow-sm text-center">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div>
+            <h3 class="text-base font-bold text-slate-800">AI 正根據時事議題實時生成雙版本教材...</h3>
+            <p class="text-xs text-slate-500 mt-1">包含文章、重點單字、文法解析、10題素養測驗與全文中譯</p>
+        </div>
+
+        <!-- 主體內容容器 -->
+        <div id="content-container" class="space-y-6">
+
+            <!-- 文章標題卡片 -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div id="badge-container" class="flex items-center space-x-2">
+                        <!-- 動態插入 badge -->
+                    </div>
+                    <div class="text-xs text-slate-400 flex items-center space-x-3">
+                        <span><i class="fa-regular fa-calendar mr-1"></i><span id="meta-date">2026.10.27</span></span>
+                        <span><i class="fa-solid fa-clock mr-1"></i><span id="meta-reading-time">預估閱讀時間: 3 分鐘</span></span>
+                    </div>
+                </div>
+                <h2 id="lesson-title-en" class="text-2xl font-bold text-slate-900 tracking-tight mb-1">Loading...</h2>
+                <h3 id="lesson-title-zh" class="text-base font-medium text-slate-500">讀取中...</h3>
+            </div>
+
+            <!-- 5 大分頁導覽 (Tabs) -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="flex border-b border-slate-200 overflow-x-auto bg-slate-50/50">
+                    <button onclick="switchTab('passage')" id="tab-passage" class="tab-btn active px-5 py-3.5 text-sm font-medium shrink-0 flex items-center space-x-2 transition-all">
+                        <i class="fa-solid fa-book-open"></i><span>01 閱讀文章</span>
+                    </button>
+                    <button onclick="switchTab('vocab')" id="tab-vocab" class="tab-btn px-5 py-3.5 text-sm font-medium shrink-0 flex items-center space-x-2 transition-all text-slate-600">
+                        <i class="fa-solid fa-list-check"></i><span>02 重點單字與片語</span>
+                    </button>
+                    <button onclick="switchTab('grammar')" id="tab-grammar" class="tab-btn px-5 py-3.5 text-sm font-medium shrink-0 flex items-center space-x-2 transition-all text-slate-600">
+                        <i class="fa-solid fa-diagram-project"></i><span>03 文法與句型分析</span>
+                    </button>
+                    <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-5 py-3.5 text-sm font-medium shrink-0 flex items-center space-x-2 transition-all text-slate-600">
+                        <i class="fa-solid fa-pen-to-square"></i><span>04 互動測驗 (10題)</span>
+                    </button>
+                    <button onclick="switchTab('translation')" id="tab-translation" class="tab-btn px-5 py-3.5 text-sm font-medium shrink-0 flex items-center space-x-2 transition-all text-slate-600">
+                        <i class="fa-solid fa-language"></i><span>05 全文中譯與句型</span>
+                    </button>
+                </div>
+
+                <!-- 分頁 1: 閱讀文章 -->
+                <div id="panel-passage" class="p-6">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reading Passage</span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="toggleAudio()" class="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all flex items-center">
+                                <i id="speak-icon" class="fa-solid fa-volume-high mr-1.5"></i><span id="speak-btn-text">朗讀全文</span>
+                            </button>
+                            <button onclick="toggleParagraphTranslation()" class="px-3 py-1.5 text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all flex items-center">
+                                <i class="fa-solid fa-eye mr-1.5"></i><span>段落雙語對照</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="passage-content" class="text-slate-800 text-base sm:text-lg leading-relaxed space-y-4">
+                        <!-- 動態填充文章內容 -->
+                    </div>
+                </div>
+
+                <!-- 分頁 2: 重點單字與片語 -->
+                <div id="panel-vocab" class="p-6 hidden">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Vocabulary, Phrases & Collocations</div>
+                    <div id="vocab-content" class="space-y-6">
+                        <!-- 動態填充單字卡片與片語卡片 -->
+                    </div>
+                </div>
+
+                <!-- 分頁 3: 文法與句型分析 -->
+                <div id="panel-grammar" class="p-6 hidden">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Grammar & Sentence Structure Analysis</div>
+                    <div id="grammar-content" class="space-y-6">
+                        <!-- 動態填充文法解析 -->
+                    </div>
+                </div>
+
+                <!-- 分頁 4: 線上互動測驗 -->
+                <div id="panel-quiz" class="p-6 hidden">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div>
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Interactive Assessment</span>
+                            <h4 class="text-sm font-bold text-slate-800">10 題素養導向測驗</h4>
+                        </div>
+                        <button onclick="resetQuiz()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                            <i class="fa-solid fa-rotate-left mr-1"></i>重做測驗
+                        </button>
+                    </div>
+                    <div id="quiz-content" class="space-y-8">
+                        <!-- 動態填充 10 道測驗題目 -->
+                    </div>
+                    <div class="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+                        <button onclick="submitQuiz()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-8 py-3 rounded-xl shadow-lg transition-all">
+                            交卷並查看分數解析
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 分頁 5: 全文中譯與句型 -->
+                <div id="panel-translation" class="p-6 hidden">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Complete Chinese Translation & Key Patterns</div>
+                    
+                    <div class="mb-8">
+                        <h4 class="text-base font-bold text-slate-900 mb-3 flex items-center">
+                            <i class="fa-solid fa-quote-left text-blue-500 mr-2"></i>中文全文翻譯
+                        </h4>
+                        <div id="translation-passage" class="bg-slate-50 p-5 rounded-xl border border-slate-200 text-slate-700 leading-relaxed space-y-3">
+                            <!-- 動態填充中文全文 -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-base font-bold text-slate-900 mb-3 flex items-center">
+                            <i class="fa-solid fa-shapes text-blue-500 mr-2"></i>核心文章句型拆解
+                        </h4>
+                        <div id="sentence-patterns" class="space-y-4">
+                            <!-- 動態填充核心句型 -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- 腳頁說明 -->
+    <footer class="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400">
+        <p>12年國教雙版本英文學習系統 · Designed for CAP & GSAT Reading Prep</p>
+    </footer>
+
+    <!-- JavaScript 邏輯控制區 -->
+    <script>
+        // ------------------------------------------------------------------
+        // 全局狀態與模擬內建時事教材資料庫 (Demo Data)
+        // ------------------------------------------------------------------
+        let currentVersion = 'cap'; // 'cap' 或 'gsat'
+        let currentTab = 'passage';
+        let showParagraphTrans = false;
+
+        const dataset = {
+            cap: {
+                titleEn: "Why Do City Trees Need Room to Grow?",
+                titleZh: "為什麼城市裡的樹需要足夠的生長空間？",
+                category: "Urban Nature · Environment · Science",
+                date: "2026.10.27",
+                readingTime: "預估閱讀時間: 2-3 分鐘",
+                readingPassage: "In many cities, trees grow beside busy roads. They provide shade on hot days and make streets more pleasant. However, city trees face a problem that is easy to overlook: there may not be enough space below the ground.\n\nA tree's roots need air, water, and room to spread. In a forest, soil is usually open and full of small spaces. Along a sidewalk, however, soil can become hard when people walk or cars park above it. Rainwater may then have difficulty reaching the roots. In addition, underground pipes can limit the space available to a growing tree.\n\nTo solve these problems, some cities have started using special planting areas. These areas hold soil under the sidewalk while supporting the weight of people walking above. They give roots more room without taking away much space from pedestrians. Other cities create small gardens around trees so rainwater can enter the soil more easily.\n\nHealthy trees do more than make a street beautiful. Their leaves offer shade, and some of the rain that falls on them does not reach the ground immediately. This can help reduce heat and slow down rainwater during storms.\n\nThe next time you pass a tree growing between buildings, remember that what happens underground matters just as much as what you see above. Giving a tree enough room to grow is one way to make a city more comfortable for everyone.",
+                passageZh: "在許多城市裡，樹木生長在繁忙道路的旁邊。它們在炎熱的日子提供遮蔭，也讓街道更加舒適。然而，城市裡的樹木面臨一個容易被忽略的問題：地面下方可能沒有足夠的空間。\n\n樹根需要空氣、水，以及向外延伸的空間。在森林裡，土壤通常較為鬆散，內部有許多小空隙。然而，在人行道旁，當人們在上方行走或車輛停放時，土壤可能變得堅硬。這麼一來，雨水就可能難以到達樹根。此外，地下管線也可能限制樹木生長的可用空間。\n\n為了解決這些問題，有些城市開始使用特殊的植栽空間。這些區域可以在人行道下方容納土壤，同時支撐上方行人的重量。它們讓樹根有更多空間，卻不必占用太多行人的通行空間。其他城市則在樹木周圍設置小花園，讓雨水更容易滲入土壤。\n\n健康的樹木不只是讓街道變得美麗。樹葉可以提供遮蔭，而落在樹葉上的部分雨水也不會立刻到達地面。這有助於降低熱度，並讓暴風雨期間的雨水流速減緩。\n\n下次經過生長在建築物之間的樹木時，請記得：地下發生的事情，和你在地面上看見的一樣重要。給樹木足夠的生長空間，就是讓城市對每個人都更舒適的一種方式。",
+                vocabulary: [
+                    { word: "shade (n.)", zh: "陰影；遮蔭", def: "An area of darkness produced by something blocking light.", exampleEn: "We sat in the shade of a large oak tree to cool off.", exampleZh: "我們坐在大橡樹的樹蔭下散熱。", note: "常用搭配為 in the shade（在樹蔭下），注意與 shadow（身影；影子）的區別。" },
+                    { word: "pleasant (adj.)", zh: "令人愉快的；舒適的", def: "Giving a sense of happy satisfaction or enjoyment.", exampleEn: "The weather today is very pleasant for a walk.", exampleZh: "今天的天氣非常舒適，很適合散步。", note: "反義字為 unpleasant (令人不快的)；動詞形式為 please (使歡喜)。" },
+                    { word: "overlook (v.)", zh: "忽略；忽視", def: "To fail to notice something or not consider it.", exampleEn: "Don't overlook the importance of getting enough sleep.", exampleZh: "不要忽略獲得充足睡眠的重要性。", note: "同義字包含 ignore, neglect。" },
+                    { word: "root (n.)", zh: "植物的根；根源", def: "The part of a plant which attaches it to the ground.", exampleEn: "The tree roots spread deep into the earth.", exampleZh: "這棵樹的樹根深深延伸進土壤中。", note: "常延伸指「問題的根源」 (the root of the problem)。" },
+                    { word: "spread (v.)", zh: "延伸；擴展；蔓延", def: "To open out or extend over a larger area.", exampleEn: "The birds spread their wings and flew away.", exampleZh: "鳥兒張開翅膀飛走了。", note: "三態同形 (spread - spread - spread)。" },
+                    { word: "soil (n.)", zh: "土壤；泥土", def: "The upper layer of earth in which plants grow.", exampleEn: "Rich soil is important for growing healthy vegetables.", exampleZh: "肥沃的土壤對於種植健康的蔬菜非常重要。", note: "與 earth (大地/泥土)、land (陸地) 意義相近但強調供植物生長的土壤。" },
+                    { word: "limit (v./n.)", zh: "限制；界限", def: "To keep something within a particular level or size.", exampleEn: "We must limit the amount of plastic we use every day.", exampleZh: "我們必須限制每天塑膠的使用量。", note: "名詞常見用法：speed limit (時速限制)、set a limit on (設定限制)。" },
+                    { word: "pedestrian (n.)", zh: "行人；步行者", def: "A person walking along a road or in a developed area.", exampleEn: "Drivers should always stop for pedestrians at the crosswalk.", exampleZh: "駕駛人在斑馬線前應隨時停讓行人。", note: "會考常考生活化單字，同義詞為 walker。" },
+                    { word: "reduce (v.)", zh: "減少；降低", def: "To make smaller or less in amount or degree.", exampleEn: "Eating less sugar can help reduce the risk of health problems.", exampleZh: "少吃糖有助於降低健康問題的風險。", note: "名詞形式為 reduction (減少)。" },
+                    { word: "immediately (adv.)", zh: "立刻；立即", def: "At once; instantly.", exampleEn: "When the bell rang, the students left the classroom immediately.", exampleZh: "當鐘聲響起時，學生們立刻離開了教室。", note: "形容詞形式為 immediate (立即的)。" },
+                    { word: "support (v.)", zh: "支撐；支持", def: "To bear the weight of or give help to someone/something.", exampleEn: "These strong pillars support the whole building.", exampleZh: "這些堅固的柱子支撐著整棟建築物。", note: "亦可用於精神上的「支持」 (support a friend)。" },
+                    { word: "comfortable (adj.)", zh: "舒適的；輕鬆的", def: "Providing physical ease and relaxation.", exampleEn: "This sofa is very soft and comfortable to sit on.", exampleZh: "這張沙發非常柔軟，坐起來很舒服。", note: "副詞為 comfortably，名詞為 comfort。" }
+                ],
+                phrases: [
+                    { phrase: "have difficulty V-ing", zh: "做某事有困難", def: "To find it hard to do a specific action.", exampleEn: "Rainwater may have difficulty reaching the roots.", exampleZh: "雨水可能很難到達樹根。", note: "亦可寫作 have trouble V-ing 或 have a hard time V-ing，注意動詞需用 V-ing！" },
+                    { phrase: "in addition", zh: "此外；除此之外", def: "Used to add another point to what has already been said.", exampleEn: "In addition, underground pipes limit the space.", exampleZh: "此外，地下管線限制了空間。", note: "轉折副詞，後面常接逗號。若接名詞需加上 to (in addition to + N/Ving)。" },
+                    { phrase: "take away (from)", zh: "剝奪；拿走；減少", def: "To remove something or make it less impressive.", exampleEn: "The new rule takes away free time from students.", exampleZh: "新規定剝奪了學生的空閒時間。", note: "常用於生活美語或外帶餐點 (takeaway)。" },
+                    { phrase: "slow down", zh: "減速；慢下來", def: "To move or happen at a lower speed.", exampleEn: "The car slowed down as it came close to the school.", exampleZh: "車子接近學校時放慢了速度。", note: "反義詞為 speed up (加速)。" },
+                    { phrase: "just as much as", zh: "和……一樣重要/一樣多", def: "Equally; to the same degree.", exampleEn: "What happens underground matters just as much as what you see above.", exampleZh: "地底下發生的事情和上面看到的一樣重要。", note: "常用於同等比較的文法句型。" }
+                ],
+                grammar: [
+                    { 
+                        title: "1. There + be 表示「有；存在」及推測助動詞結合", 
+                        pattern: "There + [ modal verb (may/must/can) ] + be + Noun", 
+                        desc: "表達某處「可能存在」或「必定存在」某物或狀況。國中會考極高頻文法點。", 
+                        exampleEn: "There may not be enough space below the ground.",
+                        exampleZh: "地面下方可能沒有足夠的空間。",
+                        tips: "注意：there is/are 的主詞在動詞後面。加入 may/can/must 時，be 動詞要還原為原形 be。"
+                    },
+                    { 
+                        title: "2. while + V-ing 分詞簡化結構（表同時發生）", 
+                        pattern: "S + V... + while + V-ing...", 
+                        desc: "當前後兩句主詞相同時，連接詞 while 後面的主詞與 be 動詞可以省略，動詞改為 V-ing。", 
+                        exampleEn: "These areas hold soil under the sidewalk while supporting the weight of pedestrians.",
+                        exampleZh: "這些區域在容納土壤的同時，也支撐著行人的重量。",
+                        tips: "完整句原為：...while they support the weight...，簡化後可使句子更加精鍊。"
+                    },
+                    { 
+                        title: "3. without + V-ing（介詞與動名詞搭配）", 
+                        pattern: "S + V... + without + V-ing...", 
+                        desc: "without 為介係詞，後接動詞時「必須」使用動名詞 (V-ing) 形式，表示「沒有做某事」或「在不……的情況下」。", 
+                        exampleEn: "They give roots more room without taking away space from pedestrians.",
+                        exampleZh: "它們給予樹根更多空間，卻不會佔用行人的通行空間。",
+                        tips: "會考常見考點：介係詞 (of, for, about, without, by, in) 後面的動詞一律加 -ing。"
+                    },
+                    {
+                        title: "4. have difficulty + V-ing（做某事有困難）",
+                        pattern: "Subject + have/has difficulty + V-ing...",
+                        desc: "描述主詞在執行某一動作時面臨阻礙或困難。",
+                        exampleEn: "Rainwater may have difficulty reaching the roots.",
+                        exampleZh: "雨水可能很難抵達樹根。",
+                        tips: "常考替換片語：have trouble + V-ing, have a hard time + V-ing。"
+                    },
+                    {
+                        title: "5. do more than + V/N（不只是……；遠不止……）",
+                        pattern: "Subject + do/does/did + more than + V / N",
+                        desc: "用以強調主詞的功能或影響力超越單一目的。",
+                        exampleEn: "Healthy trees do more than make a street beautiful.",
+                        exampleZh: "健康的樹木不只是讓街道變得美麗。",
+                        tips: "作強化語氣用，強調後續要提出的其他重大優點或作用。"
+                    }
+                ],
+                patterns: [
+                    { pattern: "It is + adj. + to + V", desc: "虛主詞 It 代替後面 true subject (不定詞短語)。", example: "It is easy to overlook that city trees need space underground." },
+                    { pattern: "what happens underground matters", desc: "what 引導的名詞子句作為全句的主詞。", example: "What happens underground matters just as much as what you see above." }
+                ],
+                quiz: [
+                    { type: 'mc', question: "1. What is the main purpose of the passage?", options: ["A. To explain why trees cannot grow near buildings.", "B. To show why space beneath city streets matters to trees.", "C. To compare different kinds of forest animals.", "D. To argue that sidewalks should be removed."], answer: "B", exp: "全文著重說明城市樹木的地下生長空間與改善方式。" },
+                    { type: 'mc', question: "2. Why can hard soil be a problem for city trees?", options: ["A. It can make it difficult for rainwater to reach roots.", "B. It always makes trees grow too quickly.", "C. It makes the air above the road colder.", "D. It stops people from walking near trees."], answer: "A", exp: "文章提到堅硬土壤會讓雨水難以抵達樹根。" },
+                    { type: 'mc', question: "3. What is one purpose of special planting areas?", options: ["A. To replace all sidewalks with gardens.", "B. To keep rain from falling on streets.", "C. To give roots room while allowing people to use sidewalks.", "D. To make tree leaves grow underground."], answer: "C", exp: "特殊植栽空間能支撐行人重量又能給予樹根空間。" },
+                    { type: 'mc', question: "4. Which statement can be inferred from the passage?", options: ["A. The visible parts of a tree are the only important parts.", "B. Underground conditions can affect how well city trees grow.", "C. Trees need less water when their roots are crowded.", "D. Cities should plant trees only in forests."], answer: "B", exp: "作者強調地底下的根系與土壤條件和地面上看得到的樹木同樣重要。" },
+                    { type: 'mc', question: "5. What does the word 'overlook' mean in paragraph 1?", options: ["A. To look down from above.", "B. To notice carefully.", "C. To fail to see or think of.", "D. To build high buildings."], answer: "C", exp: "overlook 在此表示「忽略；未注意到」。" },
+                    { type: 'mc', question: "6. According to the article, what else limits root space besides hard soil?", options: ["A. Traffic lights.", "B. Underground pipes.", "C. High buildings.", "D. Fallen leaves."], answer: "B", exp: "第二段文中明確指出地下管線 (underground pipes) 會限制空間。" },
+                    { type: 'mc', question: "7. How do leaves help during heavy rain?", options: ["A. They stop all rain from falling.", "B. They store water for winter.", "C. They prevent rain from hitting the ground immediately.", "D. They clean the street."], answer: "C", exp: "第四段說明樹葉能暫留部分降雨，避免雨水立刻到達地面。" },
+                    { type: 'mc', question: "8. Soil in forests is described as being ____.", options: ["A. hard and dry", "B. open and full of small spaces", "C. covered with concrete", "D. full of pipes"], answer: "B", exp: "第二段提到森林土壤 normally open and full of small spaces。" },
+                    { type: 'mc', question: "9. Why do some cities create small gardens around trees?", options: ["A. To help rainwater enter soil more easily.", "B. To sell flowers to pedestrians.", "C. To prevent cars from parking anywhere.", "D. To catch birds."], answer: "A", exp: "第三段結尾提及設置小花園能讓雨水更快滲入土壤。" },
+                    { type: 'mc', question: "10. What is the author's final recommendation?", options: ["A. Cut down trees near roads.", "B. Give trees enough room to grow.", "C. Stop people from walking on sidewalks.", "D. Build more underground pipes."], answer: "B", exp: "全文結論呼籲給予樹木足夠生長空間以打造舒適城市。" }
+                ]
+            },
+            gsat: {
+                titleEn: "The Hidden Cost of \"Free\" Shipping",
+                titleZh: "「免運」背後的隱藏成本",
+                category: "Consumer Psychology · Economics · Critical Thinking",
+                date: "2026.10.27",
+                readingTime: "預估閱讀時間: 4-5 分鐘",
+                readingPassage: "Imagine buying a notebook online for $18. At checkout, a message appears: \"Spend $25 to get free shipping.\" Shipping would otherwise cost $4. You add a $9 pen set, convinced that you have saved money. Yet your total payment has increased from $22 to $27. The word \"free\" changed your decision, even though the final purchase cost more.\n\nRetailers often set a minimum spending requirement for free shipping. This practice does more than encourage larger orders. It changes how shoppers compare choices. Instead of asking whether they need another product, shoppers focus on reaching the threshold. The additional purchase begins to feel like a clever way to avoid a fee rather than a separate expense.\n\nSome websites also display a progress bar announcing how close the customer is to the threshold. This design can make a distant target feel within reach and encourage one more item. That does not prove a shopper is irrational; it shows how decisions can change depending on the way choices are presented.\n\nThere are several reasons why this happens. First, an extra charge at the end of a transaction can feel especially unpleasant. People may react more strongly to avoiding a visible fee than to spending a similar amount on something else. Second, labels such as \"free\" attract attention and simplify a complicated decision. Shipping is not truly costless: warehouses, packaging, and delivery workers all require resources. The cost may simply be included elsewhere in a retailer's prices.\n\nHowever, the strategy does not always harm customers. Someone who genuinely needs detergent next week might reasonably add it to an order today and avoid paying for a separate delivery. Larger orders may also reduce the number of deliveries to a household, although whether they reduce environmental impact depends on packaging, transportation, and returns.\n\nThe key question, then, is not whether free shipping is good or bad. It is whether the extra item would have been purchased anyway. A useful habit is to calculate two totals before deciding: the cost of buying only what you need, including shipping, and the cost of an order that qualifies for free shipping. Then ask whether the added items provide enough value to justify the difference.\n\nWhen shoppers view a free-shipping offer as one possible price arrangement rather than a reward they must earn, they are less likely to confuse paying less for delivery with spending less overall.",
+                passageZh: "想像你正在網絡上購買一本 18 美元的筆記本。結帳時，畫面出現一則訊息：「消費滿 25 美元即可享有免運費。」如果沒有免運，運費原本是 4 美元。你於是加購一組 9 美元的筆，深信自己省到了錢。然而，你的總支出其實從 22 美元增加到 27 美元。「免費」這個詞改變了你的決定，儘管最後的購物金額反而更高。\n\n零售商經常設定免運的最低消費門檻。這種做法不只是鼓勵顧客購買更多商品，也會改變他們比較選項的方式。購物者不再思考自己是否真的需要另一件商品，而是專注於達到免運門檻。額外購物開始讓人覺得是避免支付運費的聰明方法，而不是另一筆獨立的支出。\n\n有些網站還會顯示進度條，告訴顧客距離門檻還有多遠。這種設計會讓原本有些距離的目標顯得觸手可及，並鼓勵顧客再加入一項商品。這並不代表購物者不理性，而是顯示出人們的決定可能隨著選項呈現的方式而改變。\n\n這種現象有幾個原因。首先，交易結束前突然出現的額外費用，可能特別令人不快。人們對避免一筆明顯的費用，可能比把類似金額花在其他東西上更有反應。其次，「免費」之類的標籤會吸引注意，並使複雜的決策看起來更簡單。運送商品其實並非毫無成本：倉庫、包裝與配送人員都需要投入資源。相關成本可能只是被包含在零售商其他商品的價格之中。\n\n然而，這種策略並不一定對消費者有害。某個人如果下週確實需要洗衣精，那麼今天把洗衣精加入訂單，省下下一次獨立配送的費用，也可能是合理的選擇。較大的訂單也可能減少家庭收貨的次數，雖然這是否真的能降低環境衝擊，仍取決於包裝、運輸及退貨等因素。\n\n因此，關鍵問題並不是免運究竟好或不好，而是那件額外商品在沒有免運活動時，原本是否就會被購買。一個有用的習慣，是在決定前計算兩筆總價：只購買需要商品、包含運費的花費，以及達到免運資格的整筆訂單金額。接著再問自己，新增商品所帶來的價值是否足以合理化兩者之間的差額。\n\n當消費者把免運優惠視為一種可能的價格安排，而不是非得努力取得的獎勵時，就比較不容易把「少付運費」和「整體花得比較少」混為一談。",
+                vocabulary: [
+                    { word: "retailer (n.)", zh: "零售商", def: "A business or person that sells goods directly to consumers.", exampleEn: "Major online retailers offer fast delivery to attract customers.", exampleZh: "各大線上零售商提供快速送貨服務以吸引顧客。", note: "對比：wholesaler (批發商)、vendor (攤販/賣方)。" },
+                    { word: "requirement (n.)", zh: "必要條件；要求", def: "Something that is needed or must be done.", exampleEn: "Meeting the minimum spending requirement qualifies you for a gift.", exampleZh: "達到最低消費要求即符合領取贈品的資格。", note: "動詞形式為 require (要求；需要)。" },
+                    { word: "threshold (n.)", zh: "門檻；界限；開端", def: "A point of entry, or a level that must be reached.", exampleEn: "He was on the threshold of a successful business career.", exampleZh: "他正處於成功商業生涯的起點門檻上。", note: "大考關鍵高頻字，常用片語 reach/cross the threshold。" },
+                    { word: "irrational (adj.)", zh: "非理性的；不合邏輯的", def: "Not based on clear thought, reason, or logic.", exampleEn: "Fear can sometimes drive people to make irrational decisions.", exampleZh: "恐懼有時會驅使人們做出非理性的決定。", note: "字首 ir- 表示否定，rational 為理性的。" },
+                    { word: "transaction (n.)", zh: "交易；買賣", def: "An instance of buying or selling something.", exampleEn: "All online transactions are protected by high security systems.", exampleZh: "所有線上交易均受高安全性系統保護。", note: "動詞為 transact (辦理/執行交易)。" },
+                    { word: "visible (adj.)", zh: "看得見的；明顯的", def: "Able to be seen or easily noticed.", exampleEn: "The stars were barely visible through the thick clouds.", exampleZh: "透過厚厚的雲層，星星幾乎看不見。", note: "字根 vis 表示「看」(如 vision, visit)。反義字為 invisible。" },
+                    { word: "genuinely (adv.)", zh: "真正地；真誠地", def: "Truly; sincerely; without pretense.", exampleEn: "She was genuinely happy to hear the good news.", exampleZh: "聽到這個好消息，她是真心感到高興。", note: "形容詞為 genuine (真實的；真誠的)。" },
+                    { word: "environmental (adj.)", zh: "環境的；環保的", def: "Relating to the natural world and the impact of human activity.", exampleEn: "Electric cars are marketed as an environmental choice.", exampleZh: "電動車被行銷為一種環保的選擇。", note: "名詞為 environment (環境)。" },
+                    { word: "qualify (v.)", zh: "符合資格；取得資格", def: "To meet the necessary conditions to get or do something.", exampleEn: "Orders over $50 qualify for a 10% discount.", exampleZh: "超過50美元的訂單符合享有10%折扣的資格。", note: "常與 for 搭配 (qualify for sth)；名詞為 qualification。" },
+                    { word: "justify (v.)", zh: "證明……合理；為……辯護", def: "To show or prove to be right or reasonable.", exampleEn: "The high price is justified by the excellent quality.", exampleZh: "優良的品質證明了其高昂價格是合理的。", note: "名詞為 justification (正當理由)。" },
+                    { word: "arrangement (n.)", zh: "安排；約定；佈置", def: "A plan or preparation for how something will happen.", exampleEn: "We made special shipping arrangements for fragile items.", exampleZh: "我們為易碎物品做了特殊的運送安排。", note: "動詞為 arrange (安排/整理)。" },
+                    { word: "confuse (v.)", zh: "混淆；使困惑", def: "To mistake one thing for another, or to make unclear.", exampleEn: "Don't confuse price with actual value.", exampleZh: "不要把價格與實際價值混為一談。", note: "常見結構：confuse A with B (把A與B混淆)。" }
+                ],
+                phrases: [
+                    { phrase: "otherwise (adv.)", zh: "否則；在其他情況下", def: "In a different situation or if things were different.", exampleEn: "Shipping would otherwise cost $4.", exampleZh: "否則，運費原本需要 4 美元。", note: "常與假設法連用，表示若非前面提及的條件，將會產生的後果。" },
+                    { phrase: "rather than", zh: "而不是……；寧願", def: "Instead of; used to express a preference or contrast.", exampleEn: "The purchase feels like a way to avoid a fee rather than a separate expense.", exampleZh: "這筆消費讓人覺得是避免費用的方法，而不是獨立的開銷。", note: "大考極高頻轉折片語，後接名詞、形容詞或 V-ing/原形動詞。" },
+                    { phrase: "within reach", zh: "觸手可及；能力所及", def: "Close enough to be achieved or obtained easily.", exampleEn: "The progress bar makes the distant target feel within reach.", exampleZh: "進度條讓原本遙遠的目標顯得觸手可及。", note: "反義片語為 out of reach (遙不可及)。" },
+                    { phrase: "depend on", zh: "取決於；依賴", def: "To be determined or influenced by something.", exampleEn: "Decisions can change depending on how choices are presented.", exampleZh: "決定可能會根據選項呈現的方式而改變。", note: "亦可寫作 rely on / count on。" },
+                    { phrase: "be less likely to + V", zh: "較不可能做某事", def: "Having a lower probability of happening.", exampleEn: "Shoppers are less likely to confuse delivery costs with total spending.", exampleZh: "購物者較不容易把運費與總支出混為一談。", note: "對比：be more likely to + V (較有可能做某事)。" }
+                ],
+                grammar: [
+                    { 
+                        title: "1. Past Participle Phrase (分詞構句表主詞心態/狀態)", 
+                        pattern: "S + V..., [ p.p. (past participle) + clause ]", 
+                        desc: "句中 convinced that... 為過去分詞短語，省略了主詞 You 與 be 動詞 were (being)，用以生動描述主詞做動作時心理「被說服/堅信」的心理狀態。", 
+                        exampleEn: "You add a $9 pen set, convinced that you have saved money.",
+                        exampleZh: "你加購了一組 9 美元的筆，深信自己省到了錢。",
+                        tips: "學測常見閱讀寫作亮點！原句為：...as you were convinced that..."
+                    },
+                    { 
+                        title: "2. Whether 引導的名詞子句（作主詞補語 / 表語）", 
+                        pattern: "The key question + is + whether + S + V...", 
+                        desc: "whether 引導名詞子句在連繫動詞 is 後面充當表語（補語），用以精準指出討論的關鍵焦點在於「是否……」。", 
+                        exampleEn: "The key question is whether the extra item would have been purchased anyway.",
+                        exampleZh: "關鍵問題在於那件額外的商品原本是否就會被購買。",
+                        tips: "學測長文關鍵轉折指標！whether 常用於點出對立論點或關鍵反思。"
+                    },
+                    { 
+                        title: "3. Subjunctive Mood: would have + p.p. (過去假設語氣)", 
+                        pattern: "would / could / should + have + p.p.", 
+                        desc: "對「過去事實」進行推測或反推。暗示「實際上過去並沒有發生這件事（原本可能買，但實際上沒買）」。", 
+                        exampleEn: "whether the extra item would have been purchased anyway.",
+                        exampleZh: "額外商品在沒有促銷時，過去是否原本真的會被購買。",
+                        tips: "學測閱讀測驗常考細節推論！看到 would have + p.p. 要意識到「過去實際上並非如此」。"
+                    },
+                    {
+                        title: "4. Instead of + V-ing（取代/而不是……）",
+                        pattern: "Instead of + V-ing / N, S + V...",
+                        desc: "表達否定前者並聚焦於後者動作的轉折文法。",
+                        exampleEn: "Instead of asking whether they need it, shoppers focus on reaching the threshold.",
+                        exampleZh: "購物者不再問自己是否需要，而是專注於達到門檻。",
+                        tips: "instead of 銜接動詞時必定使用 V-ing。"
+                    },
+                    {
+                        title: "5. Formulate logical habit: Ask whether + Clause",
+                        pattern: "A useful habit is to V... then ask whether S + V...",
+                        desc: "連續不定詞與名詞子句組合，提供條理性分析與建議的高階句法結構。",
+                        exampleEn: "Then ask whether the added items provide enough value to justify the difference.",
+                        exampleZh: "接著問自己新增商品所帶來的價值是否足以合理化兩者差額。",
+                        tips: "常用於議論文 (Argumentative Essays) 的結論建言。"
+                    }
+                ],
+                patterns: [
+                    { pattern: "instead of V-ing", desc: "代替原本的動作，進行後者的轉折說明。", example: "Instead of asking whether they need it, shoppers focus on reaching the threshold." },
+                    { pattern: "would have + p.p.", desc: "與過去事實相反的假設語氣。", example: "whether the item would have been purchased anyway." }
+                ],
+                quiz: [
+                    { type: 'mc', question: "1. What is the author's main purpose?", options: ["A. To prove that online retailers always charge higher prices.", "B. To explain how free-shipping offers influence purchasing decisions.", "C. To argue that delivery fees should be prohibited by law.", "D. To show that shoppers generally prefer expensive items."], answer: "B", exp: "全文分析免運機制如何影響消費者的購物心理與選擇。" },
+                    { type: 'mc', question: "2. In the opening example, how much more does the shopper pay after adding the pen set?", options: ["A. $4", "B. $5", "C. $9", "D. $13"], answer: "B", exp: "原原本筆記本加運費為 $18+$4=$22；加筆後為 $18+$9=$27，多花 $5。" },
+                    { type: 'mc', question: "3. Why does the author mention a progress bar?", options: ["A. To show how websites make shoppers feel closer to a spending target.", "B. To prove that free shipping is always environmentally harmful.", "C. To describe a tool for checking quality.", "D. To suggest avoiding looking at prices."], answer: "A", exp: "第三段指出進度條會讓遠方門檻看起來觸手可及。" },
+                    { type: 'mc', question: "4. Which statement best reflects the author's view?", options: ["A. Free shipping is a trick that never benefits consumers.", "B. Everyone should order more items to reduce deliveries.", "C. Buyers should compare total costs and consider whether extra items are useful.", "D. Delivery costs disappear whenever retailers offer free shipping."], answer: "C", exp: "結論呼籲評估整體花費與加購商品是否真的有用。" },
+                    { type: 'cloze', question: "5. [文意選填] Retailers often set a minimum spending ______ for free shipping.", options: ["A. threshold", "B. transaction", "C. reward", "D. packaging"], answer: "A", exp: "此處應填入 threshold (門檻)。" },
+                    { type: 'cloze', question: "6. [文意選填] Free shipping labels simplify a ______ decision for consumers.", options: ["A. visible", "B. complicated", "C. environmental", "D. separate"], answer: "B", exp: "說明免運標籤讓「複雜的 (complicated)」決策變簡單。" },
+                    { type: 'mixed', question: "7. [新型態混合題-填空] According to Para 4, shipping is not free because warehouses, ______, and delivery workers all require resources.", options: ["A. packaging", "B. advertising", "C. discounts", "D. returns"], answer: "A", exp: "第四段原文提及 warehouses, packaging, and delivery workers..." },
+                    { type: 'mixed', question: "8. [新型態混合題-簡答] What habit does the author recommend before making a purchase?", options: ["A. Calculate two totals before deciding.", "B. Always choose express delivery.", "C. Buy items only on weekends.", "D. Clear browsing history."], answer: "A", exp: "第六段明確建議：Calculate two totals before deciding." },
+                    { type: 'mc', question: "9. The word 'irrational' in paragraph 3 means _____.", options: ["A. logical", "B. unreasonable", "C. smart", "D. quick"], answer: "B", exp: "irrational 指非理性的、不合常理的 (unreasonable)。" },
+                    { type: 'mc', question: "10. What determines whether larger orders actually reduce environmental impact?", options: ["A. The shopper's age.", "B. Packaging, transportation, and returns.", "C. The color of the items.", "D. The time of order."], answer: "B", exp: "第五段明確指出取決於 packaging, transportation, and returns。" }
+                ]
+            }
+        };
+
+        // ------------------------------------------------------------------
+        // UI Helper & Event Handler Functions
+        // ------------------------------------------------------------------
+        function setTopic(topicText) {
+            const input = document.getElementById('topic-input');
+            if (input) input.value = topicText;
+        }
+
+        function toggleApiKeyVisibility() {
+            const apiKeyInput = document.getElementById('api-key-input');
+            const apiKeyIcon = document.getElementById('api-key-icon');
+            if (apiKeyInput && apiKeyIcon) {
+                if (apiKeyInput.type === 'password') {
+                    apiKeyInput.type = 'text';
+                    apiKeyIcon.className = 'fa-solid fa-eye-slash text-xs';
+                } else {
+                    apiKeyInput.type = 'password';
+                    apiKeyIcon.className = 'fa-solid fa-eye text-xs';
+                }
+            }
+        }
+
+        function switchVersion(ver) {
+            currentVersion = ver;
+            const btnCap = document.getElementById('btn-version-cap');
+            const btnGsat = document.getElementById('btn-version-gsat');
+
+            if (ver === 'cap') {
+                btnCap.className = "px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 bg-white text-blue-600 shadow-sm";
+                btnGsat.className = "px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900";
+            } else {
+                btnGsat.className = "px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 bg-white text-blue-600 shadow-sm";
+                btnCap.className = "px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900";
+            }
+
+            renderLesson();
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            const tabs = ['passage', 'vocab', 'grammar', 'quiz', 'translation'];
+            
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const panel = document.getElementById(`panel-${t}`);
+                if (t === tabId) {
+                    btn.classList.add('active', 'text-blue-600');
+                    btn.classList.remove('text-slate-600');
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('active', 'text-blue-600');
+                    btn.classList.add('text-slate-600');
+                    panel.classList.add('hidden');
+                }
+            });
+        }
+
+        function toggleParagraphTranslation() {
+            showParagraphTrans = !showParagraphTrans;
+            renderPassage();
+        }
+
+        function toggleAudio() {
+            if ('speechSynthesis' in window) {
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    document.getElementById('speak-icon').className = 'fa-solid fa-volume-high mr-1.5';
+                    document.getElementById('speak-btn-text').innerText = '朗讀全文';
+                } else {
+                    const activeLesson = dataset[currentVersion];
+                    if (!activeLesson) return;
+                    const utterance = new SpeechSynthesisUtterance(activeLesson.readingPassage);
+                    utterance.lang = 'en-US';
+                    utterance.rate = currentVersion === 'cap' ? 0.85 : 1.0;
+                    
+                    utterance.onend = function() {
+                        document.getElementById('speak-icon').className = 'fa-solid fa-volume-high mr-1.5';
+                        document.getElementById('speak-btn-text').innerText = '朗讀全文';
+                    };
+                    
+                    document.getElementById('speak-icon').className = 'fa-solid fa-stop mr-1.5';
+                    document.getElementById('speak-btn-text').innerText = '停止播放';
+                    window.speechSynthesis.speak(utterance);
+                }
+            } else {
+                alert('您的瀏覽器不支援語音朗讀功能。');
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Rendering Functions
+        // ------------------------------------------------------------------
+        function renderLesson() {
+            const data = dataset[currentVersion];
+            if (!data) return;
+
+            // Render Header & Metadata
+            document.getElementById('lesson-title-en').innerText = data.titleEn;
+            document.getElementById('lesson-title-zh').innerText = data.titleZh;
+            document.getElementById('meta-date').innerText = data.date || "2026.10.27";
+            document.getElementById('meta-reading-time').innerText = data.readingTime || "預估閱讀時間: 3 分鐘";
+
+            const badgeContainer = document.getElementById('badge-container');
+            if (currentVersion === 'cap') {
+                badgeContainer.innerHTML = `<span class="bg-blue-100 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-md">國中會考閱讀版</span><span class="text-xs text-slate-400 font-medium">${data.category}</span>`;
+            } else {
+                badgeContainer.innerHTML = `<span class="bg-indigo-100 text-indigo-700 font-bold text-xs px-2.5 py-1 rounded-md">高中學測閱讀版</span><span class="text-xs text-slate-400 font-medium">${data.category}</span>`;
+            }
+
+            renderPassage();
+            renderVocab();
+            renderGrammar();
+            renderQuiz();
+            renderTranslation();
+        }
+
+        function renderPassage() {
+            const data = dataset[currentVersion];
+            const container = document.getElementById('passage-content');
+            
+            const enParas = data.readingPassage.split('\n\n');
+            const zhParas = data.passageZh ? data.passageZh.split('\n\n') : [];
+
+            let html = '';
+            enParas.forEach((p, idx) => {
+                html += `<div class="bg-slate-50/60 p-4 rounded-xl border border-slate-100">
+                    <p class="text-slate-800 font-normal leading-relaxed">${p}</p>`;
+                if (showParagraphTrans && zhParas[idx]) {
+                    html += `<p class="mt-2 text-sm text-slate-500 font-normal pt-2 border-t border-slate-200/60">${zhParas[idx]}</p>`;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderVocab() {
+            const data = dataset[currentVersion];
+            const container = document.getElementById('vocab-content');
+            let html = '';
+
+            // Section 1: Single Vocabulary
+            html += `<div class="mb-6">
+                <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center">
+                    <i class="fa-solid fa-font text-blue-600 mr-2"></i>核心重點單字 (Key Vocabulary)
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+
+            data.vocabulary.forEach(v => {
+                html += `
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-blue-300 transition-all space-y-2">
+                    <div class="flex items-baseline justify-between">
+                        <span class="font-bold text-blue-600 text-base">${v.word}</span>
+                        <span class="text-xs font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">${v.zh}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium">${v.def}</p>
+                    ${v.exampleEn ? `
+                    <div class="pt-2 border-t border-slate-200/60 text-xs space-y-1">
+                        <div class="text-slate-800 italic">" ${v.exampleEn} "</div>
+                        <div class="text-slate-500">${v.exampleZh}</div>
+                    </div>` : ''}
+                    ${v.note ? `<div class="text-[11px] text-amber-700 bg-amber-50/80 p-2 rounded border border-amber-200/50">💡 <strong>說明：</strong>${v.note}</div>` : ''}
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // Section 2: Phrases & Collocations
+            if (data.phrases && data.phrases.length > 0) {
+                html += `<div>
+                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center">
+                        <i class="fa-solid fa-link text-blue-600 mr-2"></i>高頻片語與習慣搭配詞 (Phrases & Collocations)
+                    </h4>
+                    <div class="grid grid-cols-1 gap-4">`;
+
+                data.phrases.forEach(p => {
+                    html += `
+                    <div class="bg-blue-50/40 p-4 rounded-xl border border-blue-100 hover:border-blue-300 transition-all space-y-2">
+                        <div class="flex items-baseline justify-between">
+                            <span class="font-bold text-indigo-700 text-base">${p.phrase}</span>
+                            <span class="text-xs font-semibold text-slate-700 bg-white px-2.5 py-0.5 rounded border border-slate-200">${p.zh}</span>
+                        </div>
+                        <p class="text-xs text-slate-600">${p.def}</p>
+                        <div class="pt-2 border-t border-blue-200/40 text-xs space-y-1">
+                            <div class="text-slate-800 italic">" ${p.exampleEn} "</div>
+                            <div class="text-slate-500">${p.exampleZh}</div>
+                        </div>
+                        ${p.note ? `<div class="text-[11px] text-blue-800 bg-blue-100/60 p-2 rounded">📌 <strong>文法考點：</strong>${p.note}</div>` : ''}
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderGrammar() {
+            const data = dataset[currentVersion];
+            const container = document.getElementById('grammar-content');
+            let html = '';
+
+            data.grammar.forEach((g, i) => {
+                html += `
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-blue-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0">${i+1}</span>
+                        <h4 class="font-bold text-slate-900 text-base">${g.title}</h4>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 text-xs font-mono text-blue-800 font-semibold">
+                        <i class="fa-solid fa-code mr-1.5 text-blue-400"></i>句型公式：${g.pattern}
+                    </div>
+                    <p class="text-sm text-slate-700 leading-relaxed">${g.desc}</p>
+                    <div class="bg-slate-100/80 p-3.5 rounded-lg text-xs space-y-1">
+                        <div class="font-bold text-slate-700">課文/範例例句：</div>
+                        <div class="text-slate-800 italic">"${g.exampleEn || g.example}"</div>
+                        ${g.exampleZh ? `<div class="text-slate-500">${g.exampleZh}</div>` : ''}
+                    </div>
+                    ${g.tips ? `
+                    <div class="bg-amber-50 p-3 rounded-lg border border-amber-200/70 text-xs text-amber-900 flex items-start space-x-2">
+                        <i class="fa-solid fa-lightbulb text-amber-500 mt-0.5"></i>
+                        <div><strong>大考解題關鍵 (Exam Tip)：</strong>${g.tips}</div>
+                    </div>` : ''}
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderQuiz() {
+            const data = dataset[currentVersion];
+            const container = document.getElementById('quiz-content');
+            let html = '';
+
+            data.quiz.forEach((q, i) => {
+                html += `
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3" id="quiz-q-${i}">
+                    <div class="font-bold text-slate-900 text-sm sm:text-base">${q.question}</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+                
+                q.options.forEach(opt => {
+                    const optKey = opt.trim().charAt(0);
+                    html += `
+                    <label class="flex items-center p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-blue-50/50 transition-all">
+                        <input type="radio" name="q-${i}" value="${optKey}" class="text-blue-600 focus:ring-blue-500 mr-2.5">
+                        <span class="text-sm text-slate-700">${opt}</span>
+                    </label>`;
+                });
+
+                html += `
+                    </div>
+                    <div id="quiz-exp-${i}" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-1">
+                        <div><strong>正確答案：</strong> <span class="font-bold text-blue-700">${q.answer}</span></div>
+                        <div><strong>解析：</strong> ${q.exp}</div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function submitQuiz() {
+            const data = dataset[currentVersion];
+            let score = 0;
+
+            data.quiz.forEach((q, i) => {
+                const selected = document.querySelector(`input[name="q-${i}"]:checked`);
+                const expBox = document.getElementById(`quiz-exp-${i}`);
+                if (expBox) expBox.classList.remove('hidden');
+
+                if (selected && selected.value === q.answer) {
+                    score += 10;
+                }
+            });
+
+            alert(`測驗完成！您的得分為：${score} / 100 分\n詳細解答與解析已顯示於各題下方。`);
+        }
+
+        function resetQuiz() {
+            const data = dataset[currentVersion];
+            data.quiz.forEach((q, i) => {
+                const radios = document.getElementsByName(`q-${i}`);
+                radios.forEach(r => r.checked = false);
+                const expBox = document.getElementById(`quiz-exp-${i}`);
+                if (expBox) expBox.classList.add('hidden');
+            });
+        }
+
+        function renderTranslation() {
+            const data = dataset[currentVersion];
+            
+            // Full Chinese Passage
+            const transBox = document.getElementById('translation-passage');
+            const zhParas = data.passageZh ? data.passageZh.split('\n\n') : [data.passageZh || '無對應翻譯'];
+            transBox.innerHTML = zhParas.map(p => `<p>${p}</p>`).join('');
+
+            // Sentence Patterns
+            const patBox = document.getElementById('sentence-patterns');
+            if (data.patterns && data.patterns.length > 0) {
+                patBox.innerHTML = data.patterns.map(p => `
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div class="font-bold text-blue-700 text-sm mb-1">${p.pattern}</div>
+                        <div class="text-xs text-slate-600 mb-2">${p.desc}</div>
+                        <div class="text-xs text-slate-500 bg-white p-2.5 rounded border border-slate-100">${p.example}</div>
+                    </div>
+                `).join('');
+            } else {
+                patBox.innerHTML = `<p class="text-xs text-slate-400">目前尚無額外句型說明。</p>`;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Gemini API Real-time Generator
+        // ------------------------------------------------------------------
+        async function generateContent() {
+            const topic = document.getElementById('topic-input').value.trim();
+            const apiKey = document.getElementById('api-key-input').value.trim();
+
+            if (!topic) {
+                alert('請先輸入或選擇一個時事新聞主題！');
+                return;
+            }
+
+            const spinner = document.getElementById('loading-spinner');
+            const content = document.getElementById('content-container');
+            
+            spinner.classList.remove('hidden');
+            content.classList.add('opacity-40', 'pointer-events-none');
+
+            try {
+                const prompt = `你是一個十二年國教英文閱讀專家。請根據主題「${topic}」，為「國中會考 (cap)」與「高中學測 (gsat)」雙版本製作英語閱讀文章及配套學習元件。
+請輸出嚴格格式的 JSON 物件，格式如下：
+{
+  "cap": {
+    "titleEn": "...",
+    "titleZh": "...",
+    "category": "...",
+    "date": "2026.10.27",
+    "readingTime": "預估閱讀時間: 3 分鐘",
+    "readingPassage": "英文文章(180-250字，以\\n\\n分段)",
+    "passageZh": "中文全文翻譯(以\\n\\n分段)",
+    "vocabulary": [{"word": "word (n.)", "zh": "中文", "def": "English definition", "exampleEn": "英文例句", "exampleZh": "中文例句", "note": "用法說明"}],
+    "phrases": [{"phrase": "phrase", "zh": "中文", "def": "definition", "exampleEn": "英文例句", "exampleZh": "中文例句", "note": "考點說明"}],
+    "grammar": [{"title": "標題", "pattern": "句型公式", "desc": "詳細說明", "exampleEn": "英文例句", "exampleZh": "中文例句", "tips": "解題關鍵"}],
+    "patterns": [{"pattern": "句型", "desc": "說明", "example": "例句"}],
+    "quiz": [{"type": "mc", "question": "問題", "options": ["A. x", "B. y", "C. z", "D. w"], "answer": "A", "exp": "解析"}]
+  },
+  "gsat": {
+    "titleEn": "...",
+    "titleZh": "...",
+    "category": "...",
+    "date": "2026.10.27",
+    "readingTime": "預估閱讀時間: 4 分鐘",
+    "readingPassage": "英文文章(300-400字，以\\n\\n分段)",
+    "passageZh": "中文全文翻譯(以\\n\\n分段)",
+    "vocabulary": [{"word": "word (n.)", "zh": "中文", "def": "English definition", "exampleEn": "英文例句", "exampleZh": "中文例句", "note": "用法說明"}],
+    "phrases": [{"phrase": "phrase", "zh": "中文", "def": "definition", "exampleEn": "英文例句", "exampleZh": "中文例句", "note": "考點說明"}],
+    "grammar": [{"title": "標題", "pattern": "句型公式", "desc": "詳細說明", "exampleEn": "英文例句", "exampleZh": "中文例句", "tips": "解題關鍵"}],
+    "patterns": [{"pattern": "句型", "desc": "說明", "example": "例句"}],
+    "quiz": [{"type": "mc", "question": "問題", "options": ["A. x", "B. y", "C. z", "D. w"], "answer": "A", "exp": "解析"}]
+  }
+}
+請注意：
+1. vocabulary 請提供至少 10-12 個重點單字，且必須帶有 exampleEn, exampleZh 與 note。
+2. phrases 請提供至少 4-6 個高頻片語/搭配詞。
+3. grammar 請提供至少 4-5 個深入文法分析與大考解題技巧 (tips)。
+4. cap 與 gsat 兩個版本的 quiz 陣列中都必須正好包含 10 道題！請只輸出標準 JSON 格式文本，不要帶有任何 Markdown 註解。`;
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 請求失敗: HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) throw new Error('無法取得有效的 API 回傳內容');
+
+                const cleanedJson = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const generatedData = JSON.parse(cleanedJson);
+
+                if (generatedData.cap && generatedData.gsat) {
+                    dataset.cap = generatedData.cap;
+                    dataset.gsat = generatedData.gsat;
+                    renderLesson();
+                    alert('雙版本時事教材與擴充單字片語、文法、10題測驗已順利實時生成完畢！');
+                } else {
+                    throw new Error('解析之 JSON 格式缺失必要欄位');
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert(`生成過程出現錯誤：${err.message}\n已保留預設範例教材供測試使用。`);
+            } finally {
+                spinner.classList.add('hidden');
+                content.classList.remove('opacity-40', 'pointer-events-none');
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Page Initialization
+        // ------------------------------------------------------------------
+        window.onload = function() {
+            renderLesson();
+        };
+    </script>
+</body>
+</html>
